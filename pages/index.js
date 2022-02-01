@@ -2,6 +2,8 @@ import { Box, Button, Text, TextField, Image } from "@skynexui/components";
 import React from "react";
 import { useRouter } from "next/router";
 import appConfig from "../config.json";
+import { SiGithub } from "react-icons/si";
+import { FiMapPin } from "react-icons/fi";
 
 function Title(props) {
   console.log(props);
@@ -20,21 +22,9 @@ function Title(props) {
   );
 }
 
-// function HomePage() {
-//   return (
-//     <>
-//       <GlobalStyle />
-//       <Title tag="h1">Felipe Pereira Gaigher </Title>
-//       <h2> Discord Alura Matrix</h2>
-//     </>
-//   );
-// }
-
-// export default HomePage;
-
 export default function PaginaInicial() {
-  // const username = 'omariosouto';
   const [username, setUsername] = React.useState("FelipeGaigher");
+  const [userLocation, setUserLocation] = React.useState(`Vitória-ES, Brazil `); // setando a localização inicial do usuário vazia.
   const roteamento = useRouter();
 
   return (
@@ -74,10 +64,9 @@ export default function PaginaInicial() {
           <Box
             as="form"
             onSubmit={function (infosDoEvento) {
-              infosDoEvento.preventDefault();
-              console.log("Alguém submeteu o form");
-              roteamento.push("/chat");
-              // window.location.href = '/chat';
+              infosDoEvento.preventDefault(); // parar de ficar recarregando a página quando clicar no botão
+              // roteamento.push("/chat");
+              roteamento.push(`/chat?username=${username}`);//  usando o rout do next para fazer a paginação
             }}
             styleSheet={{
               display: "flex",
@@ -89,7 +78,7 @@ export default function PaginaInicial() {
               marginBottom: "32px",
             }}
           >
-            <Title tag="h2">Boas vindas de volta!</Title>
+            <Title tag="h2">Alouuuu</Title>
             <Text
               variant="body3"
               styleSheet={{
@@ -100,27 +89,26 @@ export default function PaginaInicial() {
               {appConfig.name}
             </Text>
 
-            {/* <input
-                            type="text"
-                            value={username}
-                            onChange={function (event) {
-                                console.log('usuario digitou', event.target.value);
-                                // Onde ta o valor?
-                                const valor = event.target.value;
-                                // Trocar o valor da variavel
-                                // através do React e avise quem precisa
-                                setUsername(valor);
-                            }}
-                        /> */}
             <TextField
+              required
               value={username}
+
+              //função que captura o que o usuario digitou no campo de texto, e atualiza a variável username com a função setUsername
               onChange={function (event) {
-                console.log("usuario digitou", event.target.value);
-                // Onde ta o valor?
                 const valor = event.target.value;
-                // Trocar o valor da variavel
-                // através do React e avise quem precisa
-                setUsername(valor);
+
+                if (valor.length > 2) {
+                  // verifica se o valor digitado no campo do texto é maior que 2 para fazer a troca da variável username
+                  setUsername(valor);
+                  fetch(`https://api.github.com/users/${valor}`) //coleta os dados do github
+                    .then((response) => response.json())
+                    .then((data) => {
+                      setUserLocation(data.location); // seta a variavel userLocation com a location do usuário
+                    });
+                } else {
+                  setUsername("FelipeGaigher");
+                  setUserLocation("Vitória-ES, Brazil");
+                }
               }}
               fullWidth
               textFieldColors={{
@@ -167,7 +155,12 @@ export default function PaginaInicial() {
                 borderRadius: "50%",
                 marginBottom: "16px",
               }}
-              src={`https://github.com/${username}.png`}
+              // src={`https://github.com/${username}.png`}
+              src={
+                username.length > 2
+                  ? `https://github.com/${username}.png`
+                  : `https://github.com/felipegaigher.png`
+              }
             />
             <Text
               variant="body4"
@@ -178,7 +171,21 @@ export default function PaginaInicial() {
                 borderRadius: "1000px",
               }}
             >
-              {username}
+              <SiGithub />
+              &nbsp;{username}
+            </Text>
+
+            <Text
+              variant="body4"
+              styleSheet={{
+                color: appConfig.theme.colors.neutrals[200],
+                backgroundColor: appConfig.theme.colors.neutrals[900],
+                padding: "3px 10px",
+                borderRadius: "1000px",
+              }}
+            >
+              <FiMapPin />
+              &nbsp;{userLocation}
             </Text>
           </Box>
           {/* Photo Area */}
