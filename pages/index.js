@@ -5,11 +5,160 @@ import appConfig from "../config.json";
 import { SiGithub } from "react-icons/si";
 import { FiMapPin } from "react-icons/fi";
 import Title from "../src/components/Title";
+// import Servers from "../src/components/Servers";
+import UsernameData from "../src/components/UsernameData";
+import handleDateFormat from "../src/utils/handleDateFormat";
+
+const usernameStates = {
+  DEFAULT: appConfig.formMemes.status.welcome,
+  LOADING: appConfig.formMemes.status.typing,
+  DONE: appConfig.formMemes.result,
+  ERROR: appConfig.formMemes.status.notFound,
+};
 
 export default function PaginaInicial() {
   const [username, setUsername] = React.useState("FelipeGaigher");
   const [userLocation, setUserLocation] = React.useState(`Vitória-ES, Brazil `); // setando a localização inicial do usuário vazia.
   const roteamento = useRouter();
+
+  const [usernameRequestStatus, setUsernameRequestStatus] = React.useState(
+      usernameStates.DEFAULT
+    );
+  const [showResults, setShowResults] = React.useState(false);
+  // const [username, setUsername] = React.useState("");
+  const [timer, setTimer] = React.useState("");
+  const [userData, setUserData] = React.useState({
+    followers: "",
+    following: "",
+    accountDate: "",
+    starsReceived: "",
+    repositories: "",
+    commits: "",
+    lastCommitDate: "",
+  });
+
+  const newPage = useRouter();
+
+  function chooseUserMeme(userSituation) {
+    if (!userSituation.userHasCommits) {
+      setUsernameRequestStatus(usernameStates.DONE.noCommits) //caus
+    } else if (userSituation.accountCreatedOverTenYears) {
+      setUsernameRequestStatus(usernameStates.DONE.oldUser); //peas
+    } else if (userSituation.lastCommitOverThreeMonths) {
+      setUsernameRequestStatus(usernameStates.DONE.longTimeNoSee); //olar
+    } else if (userSituation.hasOverAHundredFollowers) {
+      setUsernameRequestStatus(usernameStates.DONE.popStar); //omariosouto
+    } else setUsernameRequestStatus(usernameStates.DONE.normal);
+    setShowResults(true);
+  }
+
+  function verifyData(tempData) {
+    const userHasCommits = tempData.commits > 0
+    const now = new Date();
+    const lastCommit = new Date(tempData.lastCommitDate)
+    const githubCreated = new Date(tempData.accountDate)
+    const lastCommitOverThreeMonths = (now.getTime() - lastCommit.getTime()) > 7889400000;
+    const accountCreatedOverTenYears = (now.getTime() - githubCreated.getTime()) > 315576000000;
+    const hasOverAHundredFollowers = tempData.followers > 100;
+    const userSituation = {
+      userHasCommits,
+      lastCommitOverThreeMonths,
+      accountCreatedOverTenYears,
+      hasOverAHundredFollowers
+    }
+    chooseUserMeme(userSituation);
+  }
+
+  function getCommitsData(tempStarsData, login) {
+    fetch(`https://api.github.com/search/commits?q=author:${login}&sort=author-date`)
+      .then(async res => await res.json())
+      .then((data) => {
+        const tempData = {
+          ...tempStarsData,
+          commits: data?.total_count,
+          lastCommitDate: data?.items[0]?.commit.committer.date || null
+        }
+        setUserData(tempData);
+        verifyData(tempData);
+      })
+  }
+
+  function getStarsReceived(tempUserData, login) {
+    fetch(`https://api.github.com/users/${login}/repos`)
+      .then(async (res) => await res.json())
+      .then((data) => {
+        const totalStars = data.reduce((prev, curr) => {
+          return curr.stargazers_count + prev
+        }, 0)
+        const tempStarsData = {
+          ...tempUserData,
+          starsReceived: totalStars
+        }
+        getCommitsData(tempStarsData, login)
+      })
+  }
+
+
+  function handleUsernameData(data) {
+    const tempUserData = {
+      followers: data.followers,
+      following: data.following,
+      accountDate: data.created_at,
+      repositories: data.public_repos,
+    }
+    getStarsReceived(tempUserData, data.login);
+  }
+  
+  function checkIfUserExists(value) {
+    fetch(`https://api.github.com/users/${value}`)
+      .then(async (res) => {
+        if(res.status === 404) {
+          setUsernameRequestStatus(usernameStates.ERROR);
+          return
+        } else {
+          return await res.json()
+        }
+      })
+      .then((data) => {
+        if (data) {
+          handleUsernameData(data)
+        }
+      })
+      .catch(error => {
+        console.error('Não foi possível obter user. Erro: ', error)
+      })
+  } 
+ 
+  function waitBeforeRequest(value) {
+    const timeout = timer;
+    timeout && clearTimeout(timeout);
+
+    const newTimeout = setTimeout(async () => {
+      checkIfUserExists(value);
+    }, 1000);
+
+    setTimer(newTimeout);
+  }
+
+  function handleInputChange(event) {
+    const value = event.target.value;
+    setUsername(value);
+
+    if (value.length > 0) {
+      setUsernameRequestStatus(usernameStates.LOADING);
+      waitBeforeRequest(value);
+    } else {
+      setShowResults(false);
+      setUsernameRequestStatus(usernameStates.DEFAULT);
+    }
+  }
+
+  function handleFormSubmit(event) {
+    event.preventDefault();
+    localStorage.setItem('user', username)
+    newPage.push("chat");
+  }``
+
 
   return (
     <>
@@ -17,164 +166,259 @@ export default function PaginaInicial() {
         styleSheet={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: appConfig.theme.colors.primary["100"],
-          backgroundImage:
-            "url(https://virtualbackgrounds.site/wp-content/uploads/2020/10/star-wars-millennium-falcon-hologame-table.jpeg)",
+          justifyContent: "flex-start",
+          backgroundImage: `url(https://virtualbackgrounds.site/wp-content/uploads/2020/10/star-wars-millennium-falcon-hologame-table.jpeg)`,
           backgroundRepeat: "no-repeat",
           backgroundSize: "cover",
-          backgroundBlendMode: "light",
+          backgroundBlendMode: "multiply",
+          backgroundPosition: "bottom right",
         }}
       >
         <Box
           styleSheet={{
             display: "flex",
-            alignItems: "center",
             justifyContent: "space-between",
-            flexDirection: {
-              xs: "column",
-              sm: "row",
-            },
+            flexDirection: "column",
             width: "100%",
-            maxWidth: "600px",
-            borderRadius: "40px", 
+            maxWidth: "700px",
+            borderRadius: "5px",
             padding: "32px",
             margin: "16px",
-            boxShadow: "0 2px 20px 0 rgb(0 0 0 / 100%)",
-            backgroundColor: "rgba(0,0,0,0.3)",
-            // backgroundColor: appConfig.theme.colors.neutrals[700],
+            marginLeft: {
+              xs: "16px",
+              sm: "25vw",
+            },
+            boxShadow: "0 2px 10px 0 rgb(0 0 0 / 20%)",
+            backgroundColor: `${appConfig.theme.colors.neutrals[700]}CC`,
+            transition: "margin-bottom 3s",
           }}
         >
-          {/* Formulário */}
           <Box
-            as="form"
-            onSubmit={function (infosDoEvento) {
-              infosDoEvento.preventDefault(); // parar de ficar recarregando a página quando clicar no botão
-              // roteamento.push("/chat");
-              roteamento.push(`/chat?username=${username}`); //  usando o rout do next para fazer a paginação
-            }}
             styleSheet={{
               display: "flex",
-              flexDirection: "column",
               alignItems: "center",
-              justifyContent: "center",
-              width: { xs: "100%", sm: "50%" },
-              textAlign: "center",
-              marginBottom: "32px",
+              justifyContent: "space-between",
+              flexDirection: {
+                xs: "column",
+                sm: "row",
+              },
+              marginBottom: "16px",
             }}
           >
-            <Title tag="h2">Seja bem vindo!</Title>
-            <Text
-              variant="body3"
+            {/* Formulário */}
+            <Box
+              onSubmit={handleFormSubmit}
+              as="form"
               styleSheet={{
-                marginBottom: "32px",
-                color: appConfig.theme.colors.neutrals[200],
-              }}
-            >
-              {appConfig.name}
-            </Text>
-
-            <TextField
-              required
-              value={username}
-              //função que captura o que o usuario digitou no campo de texto, e atualiza a variável username com a função setUsername
-              onChange={function (event) {
-                const valor = event.target.value;
-
-                if (valor.length >= 0) {
-                  // verifica se o valor digitado no campo do texto é maior que 2 para fazer a troca da variável username
-                  setUsername(valor);
-                  fetch(`https://api.github.com/users/${valor}`) //coleta os dados do github
-                    .then((response) => response.json())
-                    .then((data) => {
-                      setUserLocation(data.location); // seta a variavel userLocation com a location do usuário
-                    });
-                } else {
-                  setUsername("FelipeGaigher");
-                  setUserLocation("Vitória-ES, Brazil");
-                }
-              }}
-              fullWidth
-              textFieldColors={{
-                neutral: {
-                  textColor: appConfig.theme.colors.neutrals[200],
-                  mainColor: appConfig.theme.colors.neutrals[900],
-                  mainColorHighlight: appConfig.theme.colors.primary[500],
-                  backgroundColor: appConfig.theme.colors.neutrals[800],
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                width: {
+                  xs: "100%",
+                  sm: "50%",
                 },
-              }}
-            />
-            <Button
-              type="submit"
-              label="Entrar"
-              fullWidth
-              buttonColors={{
-                contrastColor: appConfig.theme.colors.neutrals["000"],
-                mainColor: appConfig.theme.colors.primary[500],
-                mainColorLight: appConfig.theme.colors.primary[400],
-                mainColorStrong: appConfig.theme.colors.primary[200],
-              }}
-            />
-          </Box>
-          {/* Formulário */}
-
-          {/* Photo Area */}
-          <Box
-            styleSheet={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              maxWidth: "200px",
-              padding: "16px",
-              backgroundColor: "rgba(0,0,0,0.1)",
-
-              // backgroundColor: appConfig.theme.colors.neutrals[800],
-              // border: "1px solid",
-              borderColor: appConfig.theme.colors.neutrals[999],
-              borderRadius: "40px", 
-              flex: 1,
-              minHeight: "240px",
-            }}
-          >
-            <Image
-              styleSheet={{
-                borderRadius: "50%",
-                marginBottom: "16px",
-              }}
-              // src={`https://github.com/${username}.png`}
-              src={
-                username.length > 2
-                  ? `https://github.com/${username}.png`
-                  : `https://github.com/null.png`
-              }
-            />
-            <Text
-              variant="body4"
-              styleSheet={{
-                color: appConfig.theme.colors.neutrals[200],
-                backgroundColor: appConfig.theme.colors.neutrals[900],
-                padding: "3px 10px",
-                borderRadius: "1000px",
+                textAlign: "center",
+                marginBottom: "32px",
               }}
             >
-              <SiGithub />
-              &nbsp;{username}
-            </Text>
+              <Title tag="h2">Boas vindas!</Title>
+              <Text
+                variant="body3"
+                styleSheet={{
+                  marginBottom: "32px",
+                  color: appConfig.theme.colors.neutrals[300],
+                }}
+              >
+                {appConfig.name}
+              </Text>
 
-            <Text
-              variant="body4"
+              <TextField
+                onChange={handleInputChange}
+                fullWidth
+                textFieldColors={{
+                  neutral: {
+                    textColor: appConfig.theme.colors.neutrals[200],
+                    mainColor: appConfig.theme.colors.neutrals[900],
+                    mainColorHighlight: appConfig.theme.colors.primary[500],
+                    backgroundColor: appConfig.theme.colors.neutrals[800],
+                  },
+                }}
+              />
+              <Button
+                type="submit"
+                label="Entrar"
+                fullWidth
+                buttonColors={{
+                  contrastColor: appConfig.theme.colors.neutrals["050"],
+                  mainColor: appConfig.theme.colors.primary[500],
+                  mainColorLight: appConfig.theme.colors.primary[400],
+                  mainColorStrong: appConfig.theme.colors.primary[600],
+                }}
+                styleSheet={{
+                  fontWeight: 600,
+                }}
+                disabled={!showResults}
+              />
+            </Box>
+            {/* Formulário */}
+
+            {/* Area do meme */}
+            <Box
               styleSheet={{
-                color: appConfig.theme.colors.neutrals[200],
-                backgroundColor: appConfig.theme.colors.neutrals[900],
-                padding: "3px 10px",
-                borderRadius: "1000px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "space-between",
+                maxWidth: "300px",
+                padding: "16px",
+                marginLeft: {
+                  xs: "0",
+                  sm: "32px",
+                },
+                backgroundColor: appConfig.theme.colors.neutrals[800],
+                border: "1px solid",
+                borderColor: appConfig.theme.colors.neutrals[999],
+                borderRadius: "10px",
+                flex: 1,
+                minHeight: "240px",
               }}
             >
-              <FiMapPin />
-              &nbsp;{userLocation}
-            </Text>
+              <Image
+                styleSheet={{
+                  borderRadius: "10px",
+                  marginBottom: "16px",
+                }}
+                src={usernameRequestStatus.image}
+                alt={usernameRequestStatus.alt}
+              />
+              <Text
+                variant="body3"
+                styleSheet={{
+                  color: appConfig.theme.colors.neutrals[200],
+                  textAlign: "center",
+                  // whiteSpace: "nowrap",
+                }}
+              >
+                {usernameRequestStatus.message}
+              </Text>
+            </Box>
+            {/* Area do meme */}
           </Box>
-          {/* Photo Area */}
+
+          {/* Area do resultado */}
+            <Box
+              styleSheet={{
+                borderTop: "1px solid",
+                borderTopColor: appConfig.theme.colors.neutrals[800],
+                transition: "all 1s .1s",
+                position: showResults ? 'static' : 'absolute',
+                opacity: showResults ? '1' : '0',
+                transform: showResults ? 'translateY(0)' : 'translateY(-100px)'
+              }}
+            >
+              <Box
+                styleSheet={{
+                  position: showResults ? 'static' : 'absolute',
+                  opacity: showResults ? '1' : '0',
+                  paddingTop: "16px",
+                  paddingBottom: "8px",
+                }}
+              >
+                <Title tag="h3"> Dados do usuário </Title>
+              </Box>
+              <Box
+                styleSheet={{
+                  position: showResults ? 'static' : 'absolute',
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexDirection: {
+                    xs: "column",
+                    sm: "row",
+                  },
+                }}
+              >
+                {/* Imagem do user */}
+                <Box
+                  styleSheet={{
+                    position: showResults ? 'static' : 'absolute',
+                    opacity: showResults ? '1' : '0',
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    maxWidth: "200px",
+                    padding: "16px",
+                    backgroundColor: appConfig.theme.colors.neutrals[800],
+                    border: "1px solid",
+                    borderColor: appConfig.theme.colors.neutrals[999],
+                    borderRadius: "10px",
+                    flex: 1,
+                    minHeight: "240px",
+                  }}
+                >
+                  <Image
+                    styleSheet={{
+                      borderRadius: "50%",
+                      marginBottom: "16px",
+                    }}
+                    src={`https://github.com/${username}.png`}
+                  />
+                  <Text
+                    variant="body4"
+                    styleSheet={{
+                      color: appConfig.theme.colors.neutrals[200],
+                      backgroundColor: appConfig.theme.colors.neutrals[900],
+                      padding: "3px 10px",
+                      borderRadius: "1000px",
+                    }}
+                  >
+                    {username}
+                  </Text>
+                </Box>
+                {/* Imagem do user */}
+
+                <Box
+                  styleSheet={{
+                    position: showResults ? 'static' : 'absolute',
+                    opacity: showResults ? '1' : '0',
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    justifyContent: "center",
+                    padding: "16px",
+                    margin: "16px",
+                    maxWidth: "400px",
+                    backgroundColor: appConfig.theme.colors.neutrals[800],
+                    borderRadius: "4px",
+                    flex: 1,
+                  }}
+                >
+                  <UsernameData>Data de criação do Github: {userData.accountDate && handleDateFormat(userData.accountDate)}</UsernameData>
+                  <UsernameData>Seguidores: {userData.followers}</UsernameData>
+                  <UsernameData>Seguindo: {userData.following}</UsernameData>
+                  <UsernameData>Estrelas recebidas: {userData.starsReceived}</UsernameData>
+                  <UsernameData>Repositórios: {userData.repositories}</UsernameData>
+                  <UsernameData>Commits: {userData.commits}</UsernameData>
+                  <UsernameData>Data do último commit: {userData.lastCommitDate && handleDateFormat(userData.lastCommitDate)}</UsernameData>
+                </Box>
+              </Box>
+
+              <Box
+                styleSheet={{
+                  position: showResults ? 'static' : 'absolute',
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginTop: "16px",
+                }}
+              >
+                <Image
+                  src={`https://github-readme-stats.vercel.app/api/top-langs/?username=${username}&layout=compact&langs_count=10&theme=panda`}
+                />
+              </Box>
+            </Box>  
+          {/* Dados do user */}
         </Box>
       </Box>
     </>
