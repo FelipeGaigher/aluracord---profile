@@ -84,9 +84,9 @@
         "message": "Digite um username do Github para entrar"
       },
       "typing": {
-        "image": "https://media1.giphy.com/media/VbnUQpnihPSIgIXuZv/giphy.gif?cid=ecf05e473y0peebkw80s8tcqba1nfw15v0fq4qbxsq03hqn7&rid=giphy.gif&ct=g",
+        "image": "https://media2.giphy.com/media/VekcnHOwOI5So/giphy.gif?cid=ecf05e478webtil5sw4v9avicegfpd8mk3rgeyrv6ojla3ql&rid=giphy.gif&ct=g",
         "alt": "Gato pesquisando no computador",
-        "message": "Digitando..."
+        "message": "Pesquisando..."
       },
       "notFound": {
         "image": "https://media.giphy.com/media/rI9O6UXkCjvTG/giphy.gif",

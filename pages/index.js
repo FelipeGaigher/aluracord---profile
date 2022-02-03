@@ -98,7 +98,6 @@ export default function PaginaInicial() {
       })
   }
 
-
   function handleUsernameData(data) {
     const tempUserData = {
       followers: data.followers,
@@ -144,7 +143,7 @@ export default function PaginaInicial() {
     const value = event.target.value;
     setUsername(value);
 
-    if (value.length > 0) {
+    if (value.length > 2) {
       setUsernameRequestStatus(usernameStates.LOADING);
       waitBeforeRequest(value);
     } else {
@@ -158,7 +157,6 @@ export default function PaginaInicial() {
     localStorage.setItem('user', username)
     newPage.push("chat");
   }``
-
 
   return (
     <>
