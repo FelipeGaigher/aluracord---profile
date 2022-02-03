@@ -1,3 +1,6 @@
+# .gitignore
+.env*.local
+
 # Logs
 logs
 *.log

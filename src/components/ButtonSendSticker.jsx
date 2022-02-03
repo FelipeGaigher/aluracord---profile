@@ -1,8 +1,8 @@
 import React from 'react';
 import { Box, Button, Text, Image } from '@skynexui/components';
-import appConfig from '../config.json';
+import appConfig from '../../config.json';
 
-export default function ButtonSendSticker(props) {
+export function ButtonSendSticker(props) {
   const [isOpen, setOpenState] = React.useState('');
 
   return (
@@ -44,7 +44,7 @@ export default function ButtonSendSticker(props) {
               xs: '200px',
               sm: '290px',
             },
-            height: '500px',
+            height: '300px',
             right: '30px',
             bottom: '30px',
             padding: '16px',
@@ -63,20 +63,18 @@ export default function ButtonSendSticker(props) {
           <Box
             tag="ul"
             styleSheet={{
-                
               display: 'flex',
               flexWrap: 'wrap',
               justifyContent: 'space-between',
               flex: 1,
               paddingTop: '16px',
-              overflow: 'auto',
-              overflowY: 'auto',
+              overflow: 'scroll',
             }}
           >
             {appConfig.stickers.map((sticker) => (
               <Text
                 onClick={() => {
-                  //console.log('[DENTRO DO COMPONENTE] Clicou no sticker:', sticker);
+                  // console.log('[DENTRO DO COMPONENTE] Clicou no sticker:', sticker);
                   if (Boolean(props.onStickerClick)) {
                     props.onStickerClick(sticker);
                   }
